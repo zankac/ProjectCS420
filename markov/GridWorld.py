@@ -67,26 +67,40 @@ class GridWorld:
     def generate_random_policy(self):
         return np.random.randint(self.num_actions, size=self.num_states)
 
-    def execute_policy(self, policy, start_pos):
+    def execute_policy(self, policy, start_pos, record_states=False):
         s = self.get_state_from_pos(start_pos)
         r = self.reward_function[s]
         total_reward = r
 
+        # Initialize list to keep track of visited states if record_states is True
+        visited_states = [] if record_states else None
+
         start_time = int(round(time() * 1000))
         overtime = False
 
+        # Record initial state if required
+        if record_states:
+            visited_states.append(s)
+
         while r != self.reward[1] and r != self.reward[2]:
             s = np.random.choice(self.num_states, p=self.transition_model[s, policy[s]])
+
+            # Record state if required
+            if record_states:
+                visited_states.append(s)
+
             r = self.reward_function[s]
             total_reward += r
+
             cur_time = int(round(time() * 1000)) - start_time
             if cur_time > self.time_limit:
                 overtime = True
                 break
+
         if overtime is True:
-            return float('-inf')
+            return float('-inf'), visited_states
         else:
-            return total_reward
+            return total_reward, visited_states
 
     def random_start_policy(self, policy, start_pos, n=100, plot=True):
         start_time = int(round(time() * 1000))
@@ -96,8 +110,8 @@ class GridWorld:
         while i < n:
             temp = self.execute_policy(policy=policy, start_pos=start_pos)
             # print(f'i = {i} Random start result: {temp}')
-            if temp > float('-inf'):
-                scores[i] = temp
+            if temp[0] > float('-inf'):
+                scores[i] = temp[0]
                 i += 1
             cur_time = int(round(time() * 1000)) - start_time
             if cur_time > n * self.time_limit:
@@ -107,6 +121,7 @@ class GridWorld:
         print(f'max = {np.max(scores)}')
         print(f'min = {np.min(scores)}')
         print(f'mean = {np.mean(scores)}')
+        print(f'median = {np.median(scores)}')
         print(f'std = {np.std(scores)}')
 
         if overtime is False and plot is True:
@@ -121,7 +136,7 @@ class GridWorld:
             print('Overtime!')
             return None
         else:
-            return np.max(scores), np.min(scores), np.mean(scores)
+            return np.max(scores), np.min(scores), np.mean(scores), np.median(scores)
 
     def blackbox_move(self, s, a):
         temp = self.transition_model[s, a]
